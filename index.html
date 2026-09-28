@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тренажер по датам: История спорта и ОИ</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 600px;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            font-size: 22px;
+            margin-bottom: 20px;
+            color: #1a73e8;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .question-box {
+            background-color: #e8f0fe;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-left: 5px solid #1a73e8;
+        }
+        .question-year {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1a73e8;
+            margin: 0;
+        }
+        .question-text {
+            font-size: 16px;
+            color: #555;
+            margin-top: 5px;
+        }
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .option-btn {
+            background-color: #fff;
+            border: 2px solid #dadce0;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 15px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #3c4043;
+            font-weight: 500;
+        }
+        .option-btn:hover {
+            background-color: #f1f3f4;
+            border-color: #bdc1c6;
+        }
+        .option-btn.correct {
+            background-color: #e6f4ea;
+            border-color: #34a853;
+            color: #137333;
+        }
+        .option-btn.wrong {
+            background-color: #fce8e6;
+            border-color: #ea4335;
+            color: #c5221f;
+        }
+        .option-btn:disabled {
+            cursor: default;
+            opacity: 0.9;
+        }
+        .feedback {
+            margin-top: 15px;
+            text-align: center;
+            font-weight: bold;
+            min-height: 24px;
+            font-size: 16px;
+        }
+        .feedback.correct { color: #137333; }
+        .feedback.wrong { color: #c5221f; }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            align-items: center;
+        }
+        .next-btn {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            display: none;
+            transition: background-color 0.2s;
+        }
+        .next-btn:hover {
+            background-color: #1557b0;
+        }
+        .reset-btn {
+            background: none;
+            border: none;
+            color: #5f6368;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🏆 Тренажер по датам</h1>
+    
+    <div class="stats">
+        <span>Вопрос: <b id="q-counter">0</b></span>
+        <span>Верно: <b id="score">0</b></span>
+        <span>Ошибки: <b id="errors">0</b></span>
+    </div>
+
+    <div class="question-box">
+        <p class="question-year" id="year-display">----</p>
+        <p class="question-text">Что произошло в этом году?</p>
+    </div>
+
+    <div class="options" id="options-container">
+        <!-- Кнопки вариантов будут здесь -->
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+
+    <div class="controls">
+        <button class="reset-btn" onclick="resetProgress()">Сбросить прогресс</button>
+        <button class="next-btn" id="next-btn" onclick="nextQuestion()">Следующий вопрос ➡</button>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // БАЗА ДАННЫХ (Более 200 событий из таблицы)
+    // ==========================================
+    const rawEvents = [
+        // --- Древний мир и 19 век ---
+        { year: "776 г. до н.э.", text: "Первые достоверно известные античные ОИ" },
+        { year: "776 г. до н.э.", text: "Первый олимпийский чемпион – Коройбос" },
+        { year: "490 г. до н.э.", text: "Фидиппид сообщает о победе в битве при Марафоне" },
+        { year: "II век до н.э.", text: "Античные ОИ стали многонациональными" },
+        { year: "394 г.", text: "Запрет античных ОИ – Феодосий I" },
+        { year: "1863 г.", text: "Первые правила по футболу" },
+        { year: "1881 г.", text: "Создание Международной федерации гимнастики (FIG)" },
+        { year: "1891 г.", text: "Изобретение баскетбола – Джеймс Нейсмит (США)" },
+        { year: "1892 г.", text: "Доклад о возрождении ОИ в Сорбонне – Пьер де Кубертен (Франция)" },
+        { year: "1892 г.", text: "Создание Международного союза конькобежцев (ISU)" },
+        { year: "1894 г.", text: "Первый Международный атлетический конгресс" },
+        { year: "1894 г.", text: "Создание МОК (23.06)" },
+        { year: "1894 г.", text: "Принятие решения о возрождении ОИ" },
+        { year: "1894 г.", text: "I президент МОК – Деметриус Викелас (Греция)" },
+        { year: "1894 г.", text: "Принятие Олимпийской хартии" },
+        { year: "1895 г.", text: "Изобретение волейбола – Уильям Морган" },
+        { year: "1895 г.", text: "Создание Московского клуба лыжников" },
+        { year: "1896 г.", text: "I ОИ – Афины, Греция" },
+        { year: "1896 г.", text: "Программа ОИ состоит из борьбы, велоспорта, легкой атлетики, плавания, спортивной гимнастики, стрельбы, тенниса, тяжелой атлетики и фехтования" },
+        { year: "1896 г.", text: "Первый победитель ОИ – Джеймс Коннолли (США) (тройной прыжок)" },
+        { year: "1896 г.", text: "II президент МОК – Пьер де Кубертен (Франция)" },
+        { year: "1898 г.", text: "Изобретение гандбола – Хольгер Нильсен (Дания)" },
+        { year: "1900 г.", text: "II ОИ – Париж, Франция" },
+        { year: "1900 г.", text: "Впервые женщины выступали на ОИ (в теннисе и гольфе)" },
+        { year: "1900 г.", text: "Футбол на ОИ" },
+        
+        // --- Начало 20 века ---
+        { year: "1904 г.", text: "III ОИ – Сент-Луис, США" },
+        { year: "1904 г.", text: "Создание Международной федерации футбольных ассоциаций (FIFA)" },
+        { year: "1908 г.", text: "IV ОИ – Лондон, Великобритания" },
+        { year: "1908 г.", text: "Впервые на ОИ проведен парад спортсменов" },
+        { year: "1908 г.", text: "В ОИ приняли участие спортсмены со всех пяти континентов" },
+        { year: "1908 г.", text: "Первое участие спортсменов России на ОИ" },
+        { year: "1908 г.", text: "Первый победитель ОИ из России – Николай Панин-Коломенкин (фигурное катание)" },
+        { year: "1908 г.", text: "«Главное не победа, а участие» – Епископ Этельберт Талбот (США)" },
+        { year: "1908 г.", text: "Фигурное катание на ОИ" },
+        { year: "1908 г.", text: "Создание Международной федерации плавания (FINA)" },
+        { year: "1908 г.", text: "Создание Международной федерации хоккея (IIHF)" },
+        { year: "1911 г.", text: "Создание РОК" },
+        { year: "1911 г.", text: "Первый президент РОК – Вячеслав Срезневский" },
+        { year: "1911 г.", text: "Создание Всероссийского футбольного союза" },
+        { year: "1912 г.", text: "V ОИ – Стокгольм, Швеция" },
+        { year: "1912 г.", text: "«Ода спорту» – Пьер де Кубертен (Франция)" },
+        { year: "1912 г.", text: "Первое участие Российской империи в ОИ после создания олимпийского комитета" },
+        { year: "1912 г.", text: "Плавание на ОИ (жен)" },
+        { year: "1912 г.", text: "Создание Международной ассоциации легкоатлетических федераций (IAAF)" },
+        { year: "1913 г.", text: "Первая Всероссийская олимпиада" },
+        { year: "1914 г.", text: "Утверждение олимпийского флага и эмблемы ОИ" },
+        { year: "1916 г.", text: "VI ОИ – Берлин, Германия (не состоялись из-за первой мировой войны)" },
+        { year: "1919 г.", text: "Первый Всероссийский съезд по физической культуре, спорту и допризывной подготовке" },
+        
+        // --- 1920-1940 ---
+        { year: "1920 г.", text: "VII ОИ – Антверпен, Бельгия" },
+        { year: "1920 г.", text: "Впервые на ОИ поднят олимпийский флаг" },
+        { year: "1920 г.", text: "Впервые на ОИ прозвучала клятва от имени спортсменов" },
+        { year: "1920 г.", text: "Впервые на ОИ прозвучал девиз «Быстрее! Выше! Сильнее!»" },
+        { year: "1920 г.", text: "Впервые на ОИ появилась олимпийская эмблема" },
+        { year: "1920 г.", text: "Хоккей на ОИ" },
+        { year: "1920 г.", text: "Создание Высшего совета ФК в СССР" },
+        { year: "1920 г.", text: "Введены два обязательных урока ФК в школе" },
+        { year: "1924 г.", text: "VIII ОИ – Париж, Франция" },
+        { year: "1924 г.", text: "I ОЗИ – Шамони, Франция" },
+        { year: "1924 г.", text: "Программа ОЗИ состоит из бобслея, керлинга, конькобежного спорта, лыжного двоеборья, лыжных гонок, прыжков на лыжах с трамплина, соревнований военных патрулей, фигурного катания и хоккея" },
+        { year: "1924 г.", text: "Создание Международной федерации лыжного спорта (FIS)" },
+        { year: "1925 г.", text: "III президент МОК – Анри де Байе-Латур (Бельгия)" },
+        { year: "1925 г.", text: "Принятие решения о проведении ОЗИ" },
+        { year: "1928 г.", text: "IX ОИ – Амстердам, Нидерланды" },
+        { year: "1928 г.", text: "II ОЗИ – Санкт-Мориц, Швейцария" },
+        { year: "1928 г.", text: "Впервые на ОИ зажжен олимпийский огонь" },
+        { year: "1928 г.", text: "Легкая атлетика на ОИ (жен)" },
+        { year: "1928 г.", text: "Спортивная гимнастика на ОИ (жен)" },
+        { year: "1928 г.", text: "Строительство стадиона Динамо" },
+        { year: "1930 г.", text: "Первый ЧМ по футболу" },
+        { year: "1931 г.", text: "Введение комплекса ГТО в СССР" },
+        { year: "1932 г.", text: "X ОИ – Лос-Анджелес, США" },
+        { year: "1932 г.", text: "III ОЗИ – Лейк-Плэсид, США" },
+        { year: "1932 г.", text: "Впервые на ОИ построена олимпийская деревня" },
+        { year: "1932 г.", text: "Создание Международной федерации баскетбола (FIBA)" },
+        { year: "1934 г.", text: "Введение комплекса БГТО в СССР" },
+        { year: "1935 г.", text: "Создание Единой всесоюзной спортивной классификации (ЕВСК)" },
+        { year: "1936 г.", text: "XI ОИ – Берлин, Германия" },
+        { year: "1936 г.", text: "IV ОЗИ – Гармиш-Партенкирхен, Германия" },
+        { year: "1936 г.", text: "Впервые на ОИ проведена эстафета олимпийского огня" },
+        { year: "1936 г.", text: "Баскетбол на ОИ" },
+        { year: "1936 г.", text: "Гандбол на ОИ" },
+        { year: "1937 г.", text: "Смерть Пьера де Кубертена" },
+        { year: "1939 г.", text: "Введение дня физкультурника в СССР (вторая суббота августа)" },
+        { year: "1940 г.", text: "XII ОИ – Хельсинки, (не состоялись из-за первой мировой войны)" },
+        { year: "1940 г.", text: "ОЗИ – Гармиш-Партенкирхен, Германия (не состоялись из-за первой мировой войны)" },
+        { year: "1944 г.", text: "XIII ОИ – Лондон, Великобритания (не состоялись из-за первой мировой войны)" },
+        { year: "1944 г.", text: "ОЗИ – Кортина д'Ампеццо, Италия (не состоялись из-за первой мировой войны)" },
+        
+        // --- Середина 20 века ---
+        { year: "1946 г.", text: "IV президент МОК – Зигфрид Эдстрем (Швеция)" },
+        { year: "1946 г.", text: "Создание Международной федерации гандбола (IHF)" },
+        { year: "1947 г.", text: "Создание Международной федерации волейбола (FIVB)" },
+        { year: "1948 г.", text: "XIV ОИ – Лондон, Великобритания" },
+        { year: "1948 г.", text: "V ОЗИ – Санкт-Мориц, Швейцария" },
+        { year: "1948 г.", text: "Решение о ежегодном праздновании Международного олимпийского дня (23-е июня)" },
+        { year: "1951 г.", text: "Создание НОК СССР" },
+        { year: "1952 г.", text: "XV ОИ – Хельсинки, Финляндия" },
+        { year: "1952 г.", text: "VI ОЗИ – Осло, Норвегия" },
+        { year: "1952 г.", text: "Впервые на ОЗИ зажжен олимпийский огонь" },
+        { year: "1952 г.", text: "Первое участие спортсменов СССР в ОИ" },
+        { year: "1952 г.", text: "Первый победитель ОИ из СССР – Нина Пономарева-Ромашкова (метание диска)" },
+        { year: "1952 г.", text: "V президент МОК – Эвери Брендедж (США)" },
+        { year: "1954 г.", text: "Создание Союза европейских футбольных ассоциаций (УЕФА)" },
+        { year: "1956 г.", text: "XVI ОИ – Мельбурн, Австралия" },
+        { year: "1956 г.", text: "VII ОЗИ – Кортина-д'Ампеццо, Италия" },
+        { year: "1956 г.", text: "Первые ОИ в Южном полушарии" },
+        { year: "1956 г.", text: "Первое участие спортсменов СССР в ОЗИ" },
+        { year: "1956 г.", text: "Первый победитель ОЗИ из СССР – Любовь Баранова-Козырева (лыжные гонки)" },
+        { year: "1956 г.", text: "Первая летняя Спартакиада народов СССР" },
+        { year: "1959 г.", text: "Первая летняя Универсиада" },
+        { year: "1960 г.", text: "XVII ОИ – Рим, Италия" },
+        { year: "1960 г.", text: "VIII ОЗИ – Скво-Вэлли, США" },
+        { year: "1960 г.", text: "Конькобежный спорт на ОИ" },
+        { year: "1960 г.", text: "Биатлон на ОИ" },
+        { year: "1960 г.", text: "Первые Паралимпийские игры" },
+        { year: "1960 г.", text: "Первый ЧЕ по футболу" },
+        { year: "1960 г.", text: "Первая зимняя Универсиада" },
+        { year: "1964 г.", text: "XVIII ОИ – Токио, Япония" },
+        { year: "1964 г.", text: "IX ОЗИ – Инсбрук, Австрия" },
+        { year: "1964 г.", text: "Первые ОИ в Азии" },
+        { year: "1964 г.", text: "Волейбол на ОИ" },
+        { year: "1968 г.", text: "XIX ОИ – Мехико, Мексика" },
+        { year: "1968 г.", text: "X ОЗИ – Гренобль, Франция" },
+        { year: "1968 г.", text: "Впервые на ОИ появился талисман (Ягуар)" },
+        { year: "1968 г.", text: "Впервые на ОИ взята допинг проба" },
+        { year: "1968 г.", text: "Впервые на ОИ прозвучала клятва от имени судей" },
+        
+        // --- 1970-1990 ---
+        { year: "1972 г.", text: "XX ОИ – Мюнхен, Германия" },
+        { year: "1972 г.", text: "XI ОЗИ – Саппоро, Япония" },
+        { year: "1972 г.", text: "Теракт на ОИ в Мюнхене" },
+        { year: "1972 г.", text: "VI президент МОК – Майкл Моррис лорд Килланин (Ирландия)" },
+        { year: "1974 г.", text: "Принятие решения о проведении XXII ОИ в Москве" },
+        { year: "1974 г.", text: "Учреждение Олимпийского ордена" },
+        { year: "1976 г.", text: "XXI ОИ – Монреаль, Канада" },
+        { year: "1976 г.", text: "XII ОЗИ – Инсбрук, Австрия" },
+        { year: "1976 г.", text: "Гандбол на ОИ (жен)" },
+        { year: "1976 г.", text: "Баскетбол на ОИ (жен)" },
+        { year: "1976 г.", text: "Первые зимние Паралимпийские игры" },
+        { year: "1980 г.", text: "XXII ОИ – Москва, СССР" },
+        { year: "1980 г.", text: "XIII ОЗИ – Лейк-Плэсид, США" },
+        { year: "1980 г.", text: "Бойкот ОИ в Москве сборной США и их союзниками" },
+        { year: "1980 г.", text: "VII президент МОК – Хуан Антонио Самаранч (Испания)" },
+        { year: "1981 г.", text: "Из Олимпийской хартии исключено любительство" },
+        { year: "1981 г.", text: "Первые Всемирные игры" },
+        { year: "1983 г.", text: "Первый ЧМ по легкой атлетике" },
+        { year: "1984 г.", text: "XXIII ОИ – Лос-Анджелес, США" },
+        { year: "1984 г.", text: "XIV ОЗИ – Сараево, Югославия" },
+        { year: "1984 г.", text: "Бойкот ОИ в США сборной СССР и их союзниками" },
+        { year: "1984 г.", text: "Художественная гимнастика на ОИ" },
+        { year: "1986 г.", text: "Первые Игры доброй воли – Москва, СССР" },
+        { year: "1987 г.", text: "Создание Советской олимпийской академии" },
+        { year: "1988 г.", text: "XXIV ОИ – Сеул, Республика Корея" },
+        { year: "1988 г.", text: "XV ОЗИ – Калгари, Канада" },
+        { year: "1988 г.", text: "Допуск профессионалов до ОИ" },
+        { year: "1988 г.", text: "Паралимпийские игры проходят в городах проведения ОИ" },
+        { year: "1989 г.", text: "Образование ВОК" },
+        { year: "1989 г.", text: "Создание Международного паралимпийского комитета" },
+        
+        // --- 1990-2000 ---
+        { year: "1991 г.", text: "Комплексы ГТО и БГТО прекратили существование" },
+        { year: "1992 г.", text: "XXV ОИ – Барселона, Испания" },
+        { year: "1992 г.", text: "XVI ОЗИ – Альбервиль, Франция" },
+        { year: "1992 г.", text: "В ОИ участвует «Объединенная команда» из 12 стран бывшего СССР" },
+        { year: "1992 г.", text: "Переименование ВОК в ОКР" },
+        { year: "1993 г.", text: "Признание ОКР МОК-ом" },
+        { year: "1994 г.", text: "XVII ОЗИ – Лиллехаммер, Норвегия" },
+        { year: "1994 г.", text: "Первые ОЗИ, прошедшие через два года после ОИ" },
+        { year: "1994 г.", text: "Первое участие самостоятельной команды РФ в ОЗИ" },
+        { year: "1994 г.", text: "Первый победитель ОЗИ из РФ – Александр Голубев (конькобежный спорт)" },
+        { year: "1994 г.", text: "Международный год Спорта" },
+        { year: "1995 г.", text: "Первые Всемирные военные игры" },
+        { year: "1996 г.", text: "XXVI ОИ – Атланта, США" },
+        { year: "1996 г.", text: "Первое участие спортсменов РФ в ОИ" },
+        { year: "1996 г.", text: "Первый победитель ОИ из РФ – Александр Бекетов (фехтование)" },
+        { year: "1996 г.", text: "Футбол на ОИ (жен)" },
+        { year: "1998 г.", text: "XVIII ОЗИ – Нагано, Япония" },
+        { year: "1998 г.", text: "Хоккей на ОИ (жен)" },
+        { year: "1998 г.", text: "Первые Всемирные юношеские игры – Москва, РФ" },
+        { year: "1999 г.", text: "Создание ВАДА" },
+        
+        // --- 2000-2020 ---
+        { year: "2000 г.", text: "XXVII ОИ – Сидней, Австралия" },
+        { year: "2000 г.", text: "Первые зимние Игры доброй воли" },
+        { year: "2000 г.", text: "Первая Спартакиада молодежи России" },
+        { year: "2000 г.", text: "Первая Олимпиада по физической культуре среди школьников" },
+        { year: "2001 г.", text: "VIII президент МОК – Жак Рогге (Бельгия)" },
+        { year: "2002 г.", text: "XIX ОЗИ – Солт-Лейк-Сити, США" },
+        { year: "2004 г.", text: "XXVIII ОИ – Афины, Греция" },
+        { year: "2006 г.", text: "XX ОЗИ – Турин, Италия" },
+        { year: "2007 г.", text: "Принятие решения о проведении XXII ОЗИ в Сочи" },
+        { year: "2007 г.", text: "Создание РУСАДА" },
+        { year: "2008 г.", text: "XXIX ОИ – Пекин, Китай" },
+        { year: "2010 г.", text: "XXI ОЗИ – Ванкувер, Канада" },
+        { year: "2010 г.", text: "Первые летние Юношеские ОИ" },
+        { year: "2010 г.", text: "Первые зимние Всемирные военные игры" },
+        { year: "2012 г.", text: "XXX ОИ – Лондон, Великобритания" },
+        { year: "2012 г.", text: "Впервые на ОИ прозвучала клятва от имени тренеров" },
+        { year: "2012 г.", text: "Первые зимние Юношеские ОИ" },
+        { year: "2013 г.", text: "IX президент МОК – Томас Бах (Германия)" },
+        { year: "2014 г.", text: "XXII ОЗИ – Сочи, РФ" },
+        { year: "2014 г.", text: "Введение комплекса ГТО в РФ" },
+        { year: "2016 г.", text: "XXXI ОИ – Рио-де-Жанейро, Бразилия" },
+        { year: "2018 г.", text: "XXIII ОЗИ – Пхенчхан, Республика Корея" },
+        { year: "2018 г.", text: "ЧМ по футболу в России" },
+        { year: "2019 г.", text: "Зимняя Всемирная Универсиада – Красноярск, РФ" },
+        { year: "2020 г.", text: "XXXII ОИ – перенесены на 2021 год" },
+        { year: "2021 г.", text: "XXXII ОИ – Токио, Япония" },
+        { year: "2022 г.", text: "XXIV ОЗИ – Пекин, Китай" },
+        { year: "2024 г.", text: "XXXIII ОИ – Париж, Франция" },
+        { year: "2026 г.", text: "XXV ОЗИ – Милан и Кортина-д'Ампеццо, Италия" },
+        { year: "2028 г.", text: "XXXIV ОИ – Лос-Анджелес, США" },
+        { year: "2032 г.", text: "XXXV ОИ – Брисбен, Австралия" }
+    ];
+
+    // ==========================================
+    // ЛОГИКА ТРЕНАЖЕРА
+    // ==========================================
+
+    // Переменные состояния
+    let questions = [];
+    let currentQuestion = null;
+    let score = 0;
+    let errorCount = 0;
+    let totalQuestions = 0;
+
+    // Функция для парсинга года в число (для сортировки и поиска близких дат)
+    function parseYear(yearStr) {
+        if (yearStr.includes('до н.э.')) {
+            return -parseInt(yearStr.replace(/\D/g, ''));
+        }
+        if (yearStr.includes('век')) {
+            let century = parseInt(yearStr.replace(/\D/g, ''));
+            return century * 100; // Приблизительно
+        }
+        return parseInt(yearStr.replace(/\D/g, ''));
+    }
+
+    // Подготовка данных: создаем уникальные события и сортируем по году
+    function prepareData() {
+        let uniqueEvents = [];
+        let seen = new Set();
+        
+        rawEvents.forEach(e => {
+            let key = e.year + '|' + e.text;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueEvents.push({
+                    year: e.year,
+                    text: e.text,
+                    yearNum: parseYear(e.year)
+                });
+            }
+        });
+
+        // Сортируем по году
+        uniqueEvents.sort((a, b) => a.yearNum - b.yearNum);
+        return uniqueEvents;
+    }
+
+    const allEvents = prepareData();
+
+    // Инициализация / Сброс
+    function initGame() {
+        // Перемешиваем базу, чтобы вопросы шли в случайном порядке
+        questions = [...allEvents].sort(() => Math.random() - 0.5);
+        totalQuestions = questions.length;
+        score = 0;
+        errorCount = 0;
+        updateStats();
+        nextQuestion();
+    }
+
+    // Получить следующий вопрос
+    function nextQuestion() {
+        if (questions.length === 0) {
+            alert("Вы прошли все вопросы! Отличная работа!");
+            resetProgress();
+            return;
+        }
+
+        // Берем первый вопрос из перемешанного массива
+        currentQuestion = questions.shift();
+        
+        // Отображаем год
+        document.getElementById('year-display').textContent = currentQuestion.year;
+        
+        // Генерируем варианты ответов
+        generateOptions(currentQuestion);
+        
+        // Сбрасываем интерфейс
+        document.getElementById('feedback').textContent = '';
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('q-counter').textContent = totalQuestions - questions.length;
+    }
+
+    // Генерация 4 вариантов ответа
+    function generateOptions(correctEvent) {
+        const container = document.getElementById('options-container');
+        container.innerHTML = '';
+
+        // 1. Находим "соседей" по времени (в пределах +/- 100 лет, чтобы было правдоподобно)
+        let pool = allEvents.filter(e => 
+            Math.abs(e.yearNum - correctEvent.yearNum) <= 100 && 
+            e.text !== correctEvent.text
+        );
+
+        // Если пул слишком маленький (например, для будущих дат), берем просто случайные
+        if (pool.length < 3) {
+            pool = allEvents.filter(e => e.text !== correctEvent.text);
+        }
+
+        // Перемешиваем пул и берем 3 случайных
+        let wrongOptions = pool.sort(() => Math.random() - 0.5).slice(0, 3);
+
+        // Собираем все варианты вместе
+        let options = [
+            { text: correctEvent.text, isCorrect: true },
+            ...wrongOptions.map(o => ({ text: o.text, isCorrect: false }))
+        ];
+
+        // Перемешиваем варианты, чтобы правильный ответ был не всегда первым
+        options.sort(() => Math.random() - 0.5);
+
+        // Создаем кнопки
+        options.forEach(opt => {
+            let btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.textContent = opt.text;
+            btn.onclick = () => checkAnswer(btn, opt.isCorrect, correctEvent);
+            container.appendChild(btn);
+        });
+    }
+
+    // Проверка ответа
+    function checkAnswer(btn, isCorrect, correctEvent) {
+        // Блокируем все кнопки
+        const allBtns = document.querySelectorAll('.option-btn');
+        allBtns.forEach(b => b.disabled = true);
+
+        const feedback = document.getElementById('feedback');
+
+        if (isCorrect) {
+            btn.classList.add('correct');
+            feedback.textContent = '✅ Верно!';
+            feedback.className = 'feedback correct';
+            score++;
+            
+            // Если ответили верно, уменьшаем частоту этого вопроса (убираем из пула на потом)
+            // В нашей логике мы просто не возвращаем его в questions, но можно добавить в конец
+            // Для простоты оставим как есть (он просто исчезает).
+        } else {
+            btn.classList.add('wrong');
+            feedback.textContent = '❌ Ошибка! Правильный ответ выделен зеленым.';
+            feedback.className = 'feedback wrong';
+            errorCount++;
+
+            // Подсвечиваем правильный ответ
+            allBtns.forEach(b => {
+                if (b.textContent === correctEvent.text) {
+                    b.classList.add('correct');
+                }
+            });
+
+            // ВАЖНО: Система запоминания - если ошиблись, возвращаем этот вопрос в конец очереди
+            questions.push(correctEvent);
+        }
+
+        updateStats();
+        document.getElementById('next-btn').style.display = 'inline-block';
+    }
+
+    // Обновление статистики
+    function updateStats() {
+        document.getElementById('score').textContent = score;
+        document.getElementById('errors').textContent = errorCount;
+        document.getElementById('q-counter').textContent = totalQuestions - questions.length;
+    }
+
+    // Сброс прогресса
+    function resetProgress() {
+        if (confirm("Вы уверены, что хотите сбросить весь прогресс?")) {
+            localStorage.removeItem('sportTrainerState');
+            initGame();
+        }
+    }
+
+    // Сохранение состояния (упрощенное, для примера сохраняем счет)
+    function saveState() {
+        localStorage.setItem('sportTrainerState', JSON.stringify({
+            score: score,
+            errors: errorCount,
+            questionsLeft: questions.length
+        }));
+    }
+
+    // Запуск
+    window.onload = () => {
+        initGame();
+    };
+</script>
+</body>
+</html>
